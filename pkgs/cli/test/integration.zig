@@ -227,6 +227,7 @@ const ChainEvent = struct {
     event_type: []const u8,
     justified_slot: ?u64,
     finalized_slot: ?u64,
+    source_node_id: ?u32,
 
     /// Free the memory allocated for this event
     fn deinit(self: ChainEvent, allocator: std.mem.Allocator) void {
@@ -380,6 +381,7 @@ const SSEClient = struct {
 
         var justified_slot: ?u64 = null;
         var finalized_slot: ?u64 = null;
+        var source_node_id: ?u32 = null;
 
         if (parsed.value.object.get("justified_slot")) |js| {
             switch (js) {
@@ -395,10 +397,22 @@ const SSEClient = struct {
             }
         }
 
+        if (parsed.value.object.get("source_node_id")) |nid| {
+            switch (nid) {
+                .integer => |ival| {
+                    if (ival >= 0 and ival <= std.math.maxInt(u32)) {
+                        source_node_id = @intCast(ival);
+                    }
+                },
+                else => {},
+            }
+        }
+
         return ChainEvent{
             .event_type = event_type_owned,
             .justified_slot = justified_slot,
             .finalized_slot = finalized_slot,
+            .source_node_id = source_node_id,
         };
     }
 
@@ -499,6 +513,7 @@ test "CLI beam command with mock network - complete integration test" {
 
 test "SSE events integration test - wait for justification and finalization" {
     const allocator = std.testing.allocator;
+    const node3_id: u32 = 2;
 
     // Get executable path
     const exe_path = try getZeamExecutable();
@@ -519,18 +534,15 @@ test "SSE events integration test - wait for justification and finalization" {
 
     std.debug.print("INFO: Connected to SSE endpoint, waiting for events...\n", .{});
 
-    // Read events until justification, finalization, AND node3 parent sync are verified, or timeout.
+    // Read events until justification, any finalization, AND explicit node3 finalization sync are verified, or timeout.
     // Node3 starts after first finalization and syncs via parent block requests (blocks_by_root).
-    // We verify sync by waiting for finalization to advance beyond the first finalized slot,
-    // which proves the chain continued progressing after node3 joined.
+    // Node3 sync is proven only when node3 itself emits new_finalization with finalized_slot > 0.
     const timeout_ms: u64 = 480000; // 480 seconds timeout
     const start_ns = std.time.nanoTimestamp();
     const deadline_ns = start_ns + timeout_ms * std.time.ns_per_ms;
     var got_justification = false;
     var got_finalization = false;
     var got_node3_sync = false;
-    var first_finalized_slot: u64 = 0;
-    var head_count_at_finalization: usize = 0;
 
     var current_ns = std.time.nanoTimestamp();
     while (current_ns < deadline_ns and !(got_justification and got_finalization and got_node3_sync)) {
@@ -549,21 +561,16 @@ test "SSE events integration test - wait for justification and finalization" {
             // Check for finalization events
             if (std.mem.eql(u8, e.event_type, "new_finalization")) {
                 if (e.finalized_slot) |slot| {
-                    std.debug.print("DEBUG: Found finalization event with slot {}\n", .{slot});
+                    std.debug.print("DEBUG: Found finalization event with slot {} source_node_id={any}\n", .{ slot, e.source_node_id });
+
                     if (slot > 0 and !got_finalization) {
-                        // First finalization — this triggers node3 to start syncing
                         got_finalization = true;
-                        first_finalized_slot = slot;
-                        head_count_at_finalization = sse_client.getEventCount("new_head");
-                        std.debug.print("INFO: First finalization at slot {} — node 3 will start syncing via parent block requests\n", .{slot});
-                        std.debug.print("INFO: Head events at finalization: {}\n", .{head_count_at_finalization});
-                    } else if (got_finalization and slot > first_finalized_slot and !got_node3_sync) {
-                        // Finalization advanced beyond the first finalized slot.
-                        // This means the chain continued progressing after node3 joined.
+                        std.debug.print("INFO: First observed finalization at slot {}\n", .{slot});
+                    }
+
+                    if (!got_node3_sync and slot > 0 and e.source_node_id != null and e.source_node_id.? == node3_id) {
                         got_node3_sync = true;
-                        const head_count_now = sse_client.getEventCount("new_head");
-                        std.debug.print("INFO: Advanced finalization at slot {} (first was {}) — chain progressed after node 3 joined\n", .{ slot, first_finalized_slot });
-                        std.debug.print("INFO: Head events since finalization: {} (total: {})\n", .{ head_count_now - head_count_at_finalization, head_count_now });
+                        std.debug.print("INFO: Node 3 finalized at slot {} (source_node_id={})\n", .{ slot, node3_id });
                     }
                 } else {
                     std.debug.print("DEBUG: Found finalization event with null slot\n", .{});
@@ -611,7 +618,7 @@ test "SSE events integration test - wait for justification and finalization" {
         }
     }
 
-    std.debug.print("SUCCESS: SSE events integration test completed — including node 3 parent sync verification\n", .{});
+    std.debug.print("SUCCESS: SSE events integration test completed — including node 3 finalization sync verification\n", .{});
 }
 
 // Test suite for ErrorHandler

@@ -924,6 +924,12 @@ pub const ForkChoice = struct {
             target_idx = nodes[target_idx].parent orelse return ForkChoiceError.InvalidTargetSearch;
         }
 
+        // Ensure target is not behind the justified source checkpoint
+        const justified = self.fcStore.latest_justified;
+        if (nodes[target_idx].slot < justified.slot) {
+            return justified;
+        }
+
         return types.Checkpoint{
             .root = nodes[target_idx].blockRoot,
             .slot = nodes[target_idx].slot,

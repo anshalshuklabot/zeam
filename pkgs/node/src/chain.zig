@@ -101,6 +101,7 @@ pub const BeamChain = struct {
     // Track last-emitted checkpoints to avoid duplicate SSE events (e.g., genesis spam)
     last_emitted_justified: types.Checkpoint,
     last_emitted_finalized: types.Checkpoint,
+    has_emitted_finalized_event: bool,
     connected_peers: *const std.StringHashMap(PeerInfo),
     node_registry: *const NodeNameRegistry,
     force_block_production: bool,
@@ -153,6 +154,7 @@ pub const BeamChain = struct {
             .db = opts.db,
             .last_emitted_justified = fork_choice.fcStore.latest_justified,
             .last_emitted_finalized = fork_choice.fcStore.latest_finalized,
+            .has_emitted_finalized_event = false,
             .connected_peers = connected_peers,
             .node_registry = opts.node_registry,
             .force_block_production = opts.force_block_production,
@@ -899,14 +901,17 @@ pub const BeamChain = struct {
 
         // Emit finalization event only when slot increases beyond last emitted
         const last_emitted_finalized = self.last_emitted_finalized;
-        if (latest_finalized.slot > last_emitted_finalized.slot) {
-            if (api.events.NewFinalizationEvent.fromCheckpoint(self.allocator, latest_finalized, new_head.slot)) |final_event| {
+        const should_emit_finalized_event = (latest_finalized.slot > last_emitted_finalized.slot) or
+            (!self.has_emitted_finalized_event and latest_finalized.slot > 0);
+        if (should_emit_finalized_event) {
+            if (api.events.NewFinalizationEvent.fromCheckpointWithSource(self.allocator, latest_finalized, new_head.slot, self.nodeId)) |final_event| {
                 var chain_event = api.events.ChainEvent{ .new_finalization = final_event };
                 event_broadcaster.broadcastGlobalEvent(&chain_event) catch |err| {
                     self.module_logger.warn("failed to broadcast finalization event: {any}", .{err});
                     chain_event.deinit(self.allocator);
                 };
                 self.last_emitted_finalized = latest_finalized;
+                self.has_emitted_finalized_event = true;
             } else |err| {
                 self.module_logger.warn("failed to create finalization event: {any}", .{err});
             }

@@ -104,14 +104,20 @@ pub const NewFinalizationEvent = struct {
     slot: u64,
     root: []const u8,
     finalized_slot: u64,
+    source_node_id: ?u32,
 
     pub fn fromCheckpoint(allocator: Allocator, checkpoint: Checkpoint, current_slot: u64) !NewFinalizationEvent {
+        return fromCheckpointWithSource(allocator, checkpoint, current_slot, null);
+    }
+
+    pub fn fromCheckpointWithSource(allocator: Allocator, checkpoint: Checkpoint, current_slot: u64, source_node_id: ?u32) !NewFinalizationEvent {
         const root_hex = try std.fmt.allocPrint(allocator, "0x{x}", .{&checkpoint.root});
 
         return NewFinalizationEvent{
             .slot = current_slot,
             .root = root_hex,
             .finalized_slot = checkpoint.slot,
+            .source_node_id = source_node_id,
         };
     }
 
@@ -120,6 +126,9 @@ pub const NewFinalizationEvent = struct {
         try obj.put("slot", json.Value{ .integer = @as(i64, @intCast(self.slot)) });
         try obj.put("root", json.Value{ .string = self.root });
         try obj.put("finalized_slot", json.Value{ .integer = @as(i64, @intCast(self.finalized_slot)) });
+        if (self.source_node_id) |node_id| {
+            try obj.put("source_node_id", json.Value{ .integer = @as(i64, @intCast(node_id)) });
+        }
         return json.Value{ .object = obj };
     }
 
