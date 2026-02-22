@@ -1,11 +1,11 @@
 ---
 name: consensus-testing
-description: "Specialized patterns for testing Beam Chain consensus and fork choice code with multiple validators. Use when writing tests involving validators, attestations, justification, finalization, or ZK proof verification."
+description: "Specialized patterns for testing Lean Consensus consensus and fork choice code with multiple validators. Use when writing tests involving validators, attestations, justification, finalization, or ZK proof verification."
 ---
 
 # Consensus & Fork Choice Testing Patterns for Zeam
 
-Testing consensus logic requires understanding how Beam Chain validators interact. Single-validator tests miss critical dynamics.
+Testing consensus logic requires understanding how Lean Consensus validators interact. Single-validator tests miss critical dynamics.
 
 ## Multi-Validator Test Design
 
@@ -22,7 +22,7 @@ Testing consensus logic requires understanding how Beam Chain validators interac
 - Mixed online/offline validators
 - Validators with exhausted XMSS keys
 
-## Beam Chain-Specific Scenarios
+## Lean Consensus-Specific Scenarios
 
 ### XMSS Signature Testing
 Unlike BLS (Beacon Chain), XMSS signatures are stateful — keys get exhausted:

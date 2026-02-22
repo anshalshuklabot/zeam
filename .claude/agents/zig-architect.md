@@ -13,7 +13,7 @@ Ensure zeam is world-class Zig code worthy of a production Ethereum client. Code
 - **Safe**: No panics in production, explicit error handling everywhere
 - **Fast**: Zero-copy where possible, cache-friendly data layouts, minimal allocations
 - **ZK-compatible**: State transition code must compile to RISC-V for ZK-VM execution
-- **Readable**: Clear enough that a Zig developer can understand Beam Chain from the code
+- **Readable**: Clear enough that a Zig developer can understand Lean Ethereum from the code
 
 ## CRITICAL PRINCIPLE: SIMPLICITY IN STATE TRANSITION
 

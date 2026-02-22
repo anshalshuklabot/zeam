@@ -2,7 +2,7 @@
 
 ## Repository Overview
 
-Zeam is a production-grade Zig implementation of the Beam Chain — a ZK-based Ethereum consensus protocol. It is the high-performance counterpart to [leanSpec](https://github.com/leanEthereum/leanSpec), which provides the minimal Python reference specification.
+Zeam is a production-grade Zig implementation of the Lean Consensus — a ZK-based Ethereum consensus protocol. It is the high-performance counterpart to [leanSpec](https://github.com/leanEthereum/leanSpec), which provides the minimal Python reference specification.
 
 **Key principle:** leanSpec defines *what* is correct. Zeam implements *how* to do it fast. Deterministic state transition logic in Zeam **must** match leanSpec output exactly.
 
