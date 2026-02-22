@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(zig build:*)",
+      "Bash(zig fmt:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo build:*)",
+      "Bash(uv run fill:*)",
+      "Bash(uv sync:*)"
+    ]
+  }
+}
